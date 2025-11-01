@@ -42,31 +42,39 @@ def upload_video_to_twitter(file_path: str, tweet_text: str = "Test tweet"):
         raise
 
     # 2. APPEND
-    with open(file_path, "rb") as f:
-        segment_index = 0
-        while True:
-            chunk = f.read(CHUNK_SIZE)
-            if not chunk:
-                break
-            append_resp = requests.post(
-                "https://upload.twitter.com/1.1/media/upload.json",
-                params={
-                    "command": "APPEND",
-                    "media_id": media_id,
-                    "segment_index": segment_index
-                },
-                files={"media": ("media", chunk, "application/octet-stream")},
-                auth=oauth
-            )
-            append_resp.raise_for_status()
-            segment_index += 1
+    try:
+        with open(file_path, "rb") as f:
+            segment_index = 0
+            while True:
+                chunk = f.read(CHUNK_SIZE)
+                if not chunk:
+                    break
+                append_resp = requests.post(
+                    "https://upload.twitter.com/1.1/media/upload.json",
+                    params={
+                        "command": "APPEND",
+                        "media_id": media_id,
+                        "segment_index": segment_index
+                    },
+                    files={"media": ("media", chunk, "application/octet-stream")},
+                    auth=oauth
+                )
+                append_resp.raise_for_status()
+                segment_index += 1
+    except Exception as e:
+        print(e)
+        raise
 
     # 3. FINALIZE
-    requests.post(
-        "https://upload.twitter.com/1.1/media/upload.json",
-        params={"command": "FINALIZE", "media_id": media_id},
-        auth=oauth
-    ).raise_for_status()
+    try:
+        requests.post(
+            "https://upload.twitter.com/1.1/media/upload.json",
+            params={"command": "FINALIZE", "media_id": media_id},
+            auth=oauth
+        ).raise_for_status()
+    except Exception as e:
+        print(e)
+        raise
 
     # 4. POST TWEET
     # tweet_resp = requests.post(
@@ -76,21 +84,25 @@ def upload_video_to_twitter(file_path: str, tweet_text: str = "Test tweet"):
     # )
     # tweet_resp.raise_for_status()
     
-    url = "https://api.twitter.com/2/tweets"
-    payload = {
-        "text": tweet_text,
-        "media": {"media_ids": [media_id]}
-    }
-    headers = {"Content-Type": "application/json"}
-    print(f'\npayload - {payload}\n')
-    resp = requests.post(url, json=payload, headers=headers, auth=oauth)
-    resp.raise_for_status()
+    try:
+        url = "https://api.twitter.com/2/tweets"
+        payload = {
+            "text": tweet_text,
+            "media": {"media_ids": [media_id]}
+        }
+        headers = {"Content-Type": "application/json"}
+        print(f'\npayload - {payload}\n')
+        resp = requests.post(url, json=payload, headers=headers, auth=oauth)
+        resp.raise_for_status()
+    except Exception as e:
+        print(e)
+        raise
 
     return resp.json()
 
 
 @app.post("/upload-video/")
-async def upload_video(tweet_text: str = "Posted via API", video: UploadFile = File(...)):
+async def upload_video(tweet_text: str, video: UploadFile = File(...)):
     if video.content_type != "video/mp4":
         raise HTTPException(status_code=400, detail="Only MP4 allowed")
     
