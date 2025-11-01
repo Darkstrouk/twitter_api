@@ -82,6 +82,7 @@ def upload_video_to_twitter(file_path: str, tweet_text: str = "Test tweet"):
         "media": {"media_ids": [media_id]}
     }
     headers = {"Content-Type": "application/json"}
+    print(f'\npayload - {payload}\n')
     resp = requests.post(url, json=payload, headers=headers, auth=oauth)
     resp.raise_for_status()
 
