@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form
 import tempfile
 import os
 import requests
@@ -102,7 +102,12 @@ def upload_video_to_twitter(file_path: str, tweet_text: str = "Test tweet"):
 
 
 @app.post("/upload-video/")
-async def upload_video(tweet_text: str, video: UploadFile = File(...)):
+async def upload_video(
+    tweet_text: str = Form("Posted via API"), 
+    video: UploadFile = File(...)
+):
+    print((f"Received video: filename={video.filename}, size={video.size}, content_type={video.content_type}"))
+    
     if video.content_type != "video/mp4":
         raise HTTPException(status_code=400, detail="Only MP4 allowed")
     
