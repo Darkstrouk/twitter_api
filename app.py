@@ -1,6 +1,7 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form
 import tempfile
 import os
+import time
 import requests
 from requests_oauthlib import OAuth1
 
@@ -76,6 +77,36 @@ def upload_video_to_twitter(file_path: str, tweet_text: str = "Test tweet"):
         print(e)
         raise
 
+    #4.0 CHECK STATUS
+    print('\nchecking status...\n')
+    try:
+        url = "https://upload.twitter.com/1.1/media/upload.json"
+        params = {
+            "command": "STATUS",
+            "media_id": media_id
+        }
+        cnt = 1
+        while True:
+            print("\nattempt #{cnt}\n")
+            resp = requests.get(url, params=params, auth=oauth)
+            resp.raise_for_status()
+            data = resp.json()
+            if data.get("processing_info"):
+                state = data["processing_info"].get("state")
+                if state == "succeeded":
+                    break
+                elif state == "failed":
+                    raise Exception(f"Media processing failed: {data}")
+                else:
+                    # ждём
+                    check_after = data["processing_info"].get("check_after_secs", 1)
+                    time.sleep(check_after)
+                    cnt += 1
+            else:
+                break  # нет processing_info — значит, готово
+    except Exception as e:
+        print('Error in getting status: {e}\n')
+
     # 4. POST TWEET
     # tweet_resp = requests.post(
     #     "https://api.twitter.com/2/tweets",
@@ -84,6 +115,7 @@ def upload_video_to_twitter(file_path: str, tweet_text: str = "Test tweet"):
     # )
     # tweet_resp.raise_for_status()
     
+    print('\nposting tweet...\n')
     try:
         url = "https://api.twitter.com/2/tweets"
         payload = {
@@ -107,7 +139,8 @@ async def upload_video(
     video: UploadFile = File(...)
 ):
     print((f"Received video: filename={video.filename}, size={video.size}, content_type={video.content_type}"))
-    
+    print('\nrecieved tweet text: {tweet_text}')
+
     if video.content_type != "video/mp4":
         raise HTTPException(status_code=400, detail="Only MP4 allowed")
     
@@ -118,6 +151,7 @@ async def upload_video(
 
     try:
         result = upload_video_to_twitter(tmp_path, tweet_text)
+        print('\ntweet has been posted!\n')
         return {"status": "success", "tweet": result}
     finally:
         os.unlink(tmp_path)
