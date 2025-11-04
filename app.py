@@ -155,3 +155,24 @@ async def upload_video(
         return {"status": "success", "tweet": result}
     finally:
         os.unlink(tmp_path)
+
+@app.post("/tweet/")
+async def post_text_tweet(tweet_text: str = Form(...)):
+    """
+    Публикует текстовый твит без медиа.
+    """
+    if not tweet_text.strip():
+        raise HTTPException(status_code=400, detail="Tweet text cannot be empty")
+
+    try:
+        url = "https://api.twitter.com/2/tweets"
+        payload = {"text": tweet_text}
+        headers = {"Content-Type": "application/json"}
+        resp = requests.post(url, json=payload, headers=headers, auth=oauth)
+        resp.raise_for_status()
+        return {"status": "success", "tweet": resp.json()}
+    except requests.exceptions.HTTPError as e:
+        error_detail = resp.json() if resp.content else str(e)
+        raise HTTPException(status_code=resp.status_code, detail=error_detail)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to post tweet: {str(e)}")
