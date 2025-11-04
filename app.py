@@ -176,3 +176,7 @@ async def post_text_tweet(tweet_text: str = Form(...)):
         raise HTTPException(status_code=resp.status_code, detail=error_detail)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to post tweet: {str(e)}")
+
+@app.get("/health/live")
+async def liveness_check():
+    return {"status": "alive"}
